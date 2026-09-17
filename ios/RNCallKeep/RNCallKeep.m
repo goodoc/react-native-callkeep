@@ -154,7 +154,12 @@ RCT_EXPORT_MODULE()
         return;
     }
 
-    [self sendEventWithName:RNCallKeepDidChangeAudioRoute body:@{
+    /*
+        Wrapper를 거쳐야 한다. 이 알림은 performAnswerCallAction의 configureAudioSession에서    
+        JS 리스너가 붙기 전에 발생하는데, 가드 없는 sendEventWithName은 RCTCallableJSModules가
+        없으면 throw하고 그 예외가 수락 이벤트 발사를 막는다(앱 종료 상태 수락 유실).
+    */
+    [self sendEventWithNameWrapper:RNCallKeepDidChangeAudioRoute body:@{
         @"output": output,
         @"reason": @(reason),
     }];
@@ -171,6 +176,11 @@ RCT_EXPORT_MODULE()
             body, @"data",
             nil
         ];
+        /*
+           +setup:은 allocWithZone:(싱글턴)만 거치고 init을 부르지 않아 _delayedEvents가 nil로 남는다.
+            nil에 addObject:는 무음 no-op이라 앱 종료 상태에서 들어온 이벤트가 조용히 사라진다.
+        */
+        if (_delayedEvents == nil) _delayedEvents = [NSMutableArray array];
         [_delayedEvents addObject:dictionary];
     }
 }
